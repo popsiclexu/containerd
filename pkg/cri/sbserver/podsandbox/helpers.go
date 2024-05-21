@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/reference/docker"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
 
 	imagedigest "github.com/opencontainers/go-digest"
 )
