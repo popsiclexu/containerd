@@ -30,6 +30,7 @@ import (
 	clabels "github.com/containerd/containerd/labels"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	criconfig "github.com/containerd/containerd/pkg/cri/config"
 	imagestore "github.com/containerd/containerd/pkg/cri/store/image"
 	ctrdutil "github.com/containerd/containerd/pkg/cri/util"
@@ -224,4 +225,12 @@ func (c *Controller) runtimeSnapshotter(ctx context.Context, ociRuntime criconfi
 
 	log.G(ctx).Debugf("Set snapshotter for runtime %s to %s", ociRuntime.Type, ociRuntime.Snapshotter)
 	return ociRuntime.Snapshotter
+}
+
+func (c *Controller) snapshotterFromAnnationOrRuntime(ctx context.Context, ociRuntime criconfig.Runtime, s *runtime.PodSandboxConfig) string {
+	snapshotter, ok := s.Annotations[annotations.SnapshotterName]
+	if ok && snapshotter != "" {
+		return snapshotter
+	}
+	return c.runtimeSnapshotter(ctx, ociRuntime)
 }

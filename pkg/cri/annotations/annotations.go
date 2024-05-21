@@ -90,6 +90,9 @@ const (
 
 	// WindowsHostProcess is used by hcsshim to identify windows pods that are running HostProcesses
 	WindowsHostProcess = "microsoft.com/hostprocess-container"
+
+	// SnapshotterName an experimental annotation key for getting snapshotter from pod annotations.
+	SnapshotterName = "io.containerd.cri.snapshotter-name"
 )
 
 // DefaultCRIAnnotations are the default set of CRI annotations to

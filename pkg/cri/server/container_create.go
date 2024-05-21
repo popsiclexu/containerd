@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cri/annotations"
 	criconfig "github.com/containerd/containerd/pkg/cri/config"
 	cio "github.com/containerd/containerd/pkg/cri/io"
 	customopts "github.com/containerd/containerd/pkg/cri/opts"
@@ -190,7 +191,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	// Set snapshotter before any other options.
 	opts := []containerd.NewContainerOpts{
-		containerd.WithSnapshotter(c.runtimeSnapshotter(ctx, ociRuntime)),
+		containerd.WithSnapshotter(c.snapshotterFromAnnationOrRuntime(ctx, ociRuntime, sandboxConfig)),
 		// Prepare container rootfs. This is always writeable even if
 		// the container wants a readonly rootfs since we want to give
 		// the runtime (runc) a chance to modify (e.g. to create mount
@@ -379,4 +380,13 @@ func (c *criService) runtimeSnapshotter(ctx context.Context, ociRuntime criconfi
 
 	log.G(ctx).Debugf("Set snapshotter for runtime %s to %s", ociRuntime.Type, ociRuntime.Snapshotter)
 	return ociRuntime.Snapshotter
+}
+
+// Overrides the default snapshotter if Snapshotter is set.
+func (c *criService) snapshotterFromAnnationOrRuntime(ctx context.Context, ociRuntime criconfig.Runtime, s *runtime.PodSandboxConfig) string {
+	snapshotter, ok := s.Annotations[annotations.SnapshotterName]
+	if ok && snapshotter != "" {
+		return snapshotter
+	}
+	return c.runtimeSnapshotter(ctx, ociRuntime)
 }

@@ -210,7 +210,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 
 	// Set snapshotter before any other options.
 	opts := []containerd.NewContainerOpts{
-		containerd.WithSnapshotter(c.runtimeSnapshotter(ctx, ociRuntime)),
+		containerd.WithSnapshotter(c.snapshotterFromAnnationOrRuntime(ctx, ociRuntime, sandboxConfig)),
 		// Prepare container rootfs. This is always writeable even if
 		// the container wants a readonly rootfs since we want to give
 		// the runtime (runc) a chance to modify (e.g. to create mount
@@ -407,6 +407,16 @@ func (c *criService) runtimeSnapshotter(ctx context.Context, ociRuntime criconfi
 	log.G(ctx).Debugf("Set snapshotter for runtime %s to %s", ociRuntime.Type, ociRuntime.Snapshotter)
 	return ociRuntime.Snapshotter
 }
+
+// Overrides the default snapshotter if Snapshotter is set.
+func (c *criService) snapshotterFromAnnationOrRuntime(ctx context.Context, ociRuntime criconfig.Runtime, s *runtime.PodSandboxConfig) string {
+	snapshotter, ok := s.Annotations[annotations.SnapshotterName]
+	if ok && snapshotter != "" {
+		return snapshotter
+	}
+	return c.runtimeSnapshotter(ctx, ociRuntime)
+}
+
 
 const (
 	// relativeRootfsPath is the rootfs path relative to bundle path.

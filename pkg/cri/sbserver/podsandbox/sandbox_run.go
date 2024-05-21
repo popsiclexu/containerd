@@ -137,7 +137,7 @@ func (c *Controller) Start(ctx context.Context, id string) (cin sandbox.Controll
 
 	snapshotterOpt := snapshots.WithLabels(snapshots.FilterInheritedLabels(config.Annotations))
 	opts := []containerd.NewContainerOpts{
-		containerd.WithSnapshotter(c.runtimeSnapshotter(ctx, ociRuntime)),
+		containerd.WithSnapshotter(c.snapshotterFromAnnationOrRuntime(ctx, ociRuntime, config)),
 		customopts.WithNewSnapshot(id, containerdImage, snapshotterOpt),
 		containerd.WithSpec(spec, specOpts...),
 		containerd.WithContainerLabels(sandboxLabels),

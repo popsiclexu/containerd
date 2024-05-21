@@ -758,13 +758,18 @@ func (rt *pullRequestReporterRoundTripper) RoundTrip(req *http.Request) (*http.R
 	return resp, err
 }
 
-// Given that runtime information is not passed from PullImageRequest, we depend on an experimental annotation
-// passed from pod sandbox config to get the runtimeHandler. The annotation key is specified in configuration.
-// Once we know the runtime, try to override default snapshotter if it is set for this runtime.
+// Given that runtime information is not passed from PullImageRequest, we depend on two experimental annotation
+// passed from pod sandbox config to get the snapshotter and the runtimeHandler. The annotation keys are specified in configuration.
+// Try to override default snapshotter if it is set in the annotations or retrieved from runtime handler.
 // See https://github.com/containerd/containerd/issues/6657
 func (c *criService) snapshotterFromPodSandboxConfig(ctx context.Context, imageRef string,
 	s *runtime.PodSandboxConfig) (string, error) {
-	snapshotter := c.config.ContainerdConfig.Snapshotter
+	snapshotter, ok := s.Annotations[annotations.SnapshotterName]
+	if ok && snapshotter != "" {
+		return snapshotter, nil
+	}
+
+	snapshotter = c.config.ContainerdConfig.Snapshotter
 	if s == nil || s.Annotations == nil {
 		return snapshotter, nil
 	}
