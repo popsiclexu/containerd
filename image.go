@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/labels"
 	"github.com/containerd/containerd/pkg/kmutex"
+	snpkg "github.com/containerd/containerd/pkg/snapshotters"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/snapshots"
@@ -314,7 +315,8 @@ type UnpackConfig struct {
 	// DuplicationSuppressor is used to make sure that there is only one
 	// in-flight fetch request or unpack handler for a given descriptor's
 	// digest or chain ID.
-	DuplicationSuppressor kmutex.KeyedLocker
+	DuplicationSuppressor      kmutex.KeyedLocker
+	DisableSnapshotAnnotations bool
 }
 
 // UnpackOpt provides configuration for unpack
@@ -336,6 +338,13 @@ func WithUnpackDuplicationSuppressor(suppressor kmutex.KeyedLocker) UnpackOpt {
 	}
 }
 
+func WithDisableSnapshotAnnotations(disableSnapshotAnnotations bool) UnpackOpt {
+	return func(ctx context.Context, uc *UnpackConfig) error {
+		uc.DisableSnapshotAnnotations = disableSnapshotAnnotations
+		return nil
+	}
+}
+
 func (i *image) Unpack(ctx context.Context, snapshotterName string, opts ...UnpackOpt) error {
 	ctx, done, err := i.client.WithLease(ctx)
 	if err != nil {
@@ -353,6 +362,23 @@ func (i *image) Unpack(ctx context.Context, snapshotterName string, opts ...Unpa
 	manifest, err := i.getManifest(ctx, i.platform)
 	if err != nil {
 		return err
+	}
+
+	if !config.DisableSnapshotAnnotations {
+		var manifestDigest string
+		if manifest.Annotations != nil {
+			manifestDigest = manifest.Annotations[images.ManifestDigestLabel]
+		}
+		wraper := snpkg.AppendInfoHandlerWrapper(i.Name())
+		handler := wraper(images.HandlerFunc(func(_ context.Context, _ ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
+			return manifest.Layers, nil
+		}))
+		if _, err := handler.Handle(ctx, ocispec.Descriptor{
+			MediaType: manifest.MediaType,
+			Digest:    digest.Digest(manifestDigest),
+		}); err != nil {
+			return err
+		}
 	}
 
 	layers, err := i.getLayers(ctx, i.platform, manifest)

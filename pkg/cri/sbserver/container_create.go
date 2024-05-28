@@ -216,7 +216,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		// the runtime (runc) a chance to modify (e.g. to create mount
 		// points corresponding to spec.Mounts) before making the
 		// rootfs readonly (requested by spec.Root.Readonly).
-		customopts.WithNewSnapshot(id, containerdImage, sOpts...),
+		customopts.WithNewSnapshot(id, containerdImage, c.config.DisableSnapshotAnnotations, sOpts...),
 	}
 	if len(volumeMounts) > 0 {
 		mountMap := make(map[string]string)
@@ -416,7 +416,6 @@ func (c *criService) snapshotterFromAnnationOrRuntime(ctx context.Context, ociRu
 	}
 	return c.runtimeSnapshotter(ctx, ociRuntime)
 }
-
 
 const (
 	// relativeRootfsPath is the rootfs path relative to bundle path.
